@@ -24,6 +24,7 @@ public class AccountService {
         this.userRepository=userRepository;
     }
 
+    @PreAuthorize("hasRole('CUSTOMER')")
     public Account createAccount(AccountRequest accountRequest,String username){
         User user=userRepository.findByUsername(username);
         Account account=new Account();
@@ -39,11 +40,11 @@ public class AccountService {
         return ("VP"+ (long)(Math.random()*10000000000L));
     }
 
+    @PreAuthorize("hasRole('CUSTOMER')")
     public List<Account> findAccountsByUsername(String username) {
         return userRepository.findByUsername(username).getAccounts();
     }
-
-
+    @PreAuthorize("hasRole('CUSTOMER')")
     public Account findAccountByAccountNumber(String accountNumber) {
         return accountRepository.findByAccountNumber(accountNumber);
     }

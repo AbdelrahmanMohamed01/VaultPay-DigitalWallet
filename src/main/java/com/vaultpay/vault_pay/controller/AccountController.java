@@ -20,21 +20,19 @@ public class AccountController {
     AccountController(AccountService accountService){
         this.accountService=accountService;
     }
-    @PreAuthorize("hasRole('CUSTOMER')")
+
     @PostMapping("/create")
     public ResponseEntity<AccountResponse>createAccount(@RequestBody AccountRequest accountRequest, Authentication authentication){
         Account account=accountService.createAccount(accountRequest,authentication.getName());
         return ResponseEntity.status(HttpStatus.CREATED).body(AccountResponse.fromEntity(account));
     }
 
-    @PreAuthorize("hasRole('CUSTOMER')")
     @GetMapping
     public ResponseEntity<List<AccountResponse>>getAccounts(Authentication authentication){
         List<Account>accounts=accountService.findAccountsByUsername(authentication.getName());
         return ResponseEntity.ok(accounts.stream().map(AccountResponse::fromEntity).toList());
     }
 
-    @PreAuthorize("hasRole('CUSTOMER')")
     @GetMapping("/{accountNumber}")
     public ResponseEntity<AccountResponse> getAccountByAccountNumber(@PathVariable("accountNumber")String accountNumber){
         Account account=accountService.findAccountByAccountNumber(accountNumber);
