@@ -22,7 +22,9 @@ public class UserController {
     }
 
     @PostMapping("/create")
-    public ResponseEntity<UserResponse>addStaff(UserRequest userRequest){
+    public ResponseEntity<UserResponse>addStaff(@RequestBody UserRequest userRequest){
+        System.out.println(userRequest.email());
+        System.out.println(userRequest.username());
         User user=new User();
         user.setUsername(userRequest.username());
         user.setPassword(passwordEncoder.encode(userRequest.password()));

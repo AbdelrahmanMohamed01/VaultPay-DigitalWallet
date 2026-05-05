@@ -15,7 +15,7 @@ public class JournalEntry {
     private LocalDateTime createdAt;
     private String entryType;
     private String description;
-    private Long transactionGroupId;
+    private String transactionGroupId;
     @JoinColumn(name="account_id")
     @ManyToOne(fetch =FetchType.EAGER)
     private Account account;
@@ -63,11 +63,11 @@ public class JournalEntry {
         this.description = description;
     }
 
-    public Long getTransactionGroupId() {
+    public String getTransactionGroupId() {
         return transactionGroupId;
     }
 
-    public void setTransactionGroupId(Long transactionGroupId) {
+    public void setTransactionGroupId(String transactionGroupId) {
         this.transactionGroupId = transactionGroupId;
     }
 

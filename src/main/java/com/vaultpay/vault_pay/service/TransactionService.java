@@ -24,11 +24,15 @@ public class TransactionService {
     private final AccountRepository accountRepository;
     private final TransactionRequestRepository transactionRequestRepository;
     private final UserRepository userRepository;
+    private final CurrencyConverter currencyConverter;
+    private final LedgerService ledgerService;
 
-    TransactionService(AccountRepository accountRepository,TransactionRequestRepository transactionRequestRepository,UserRepository userRepository){
+    TransactionService(AccountRepository accountRepository,TransactionRequestRepository transactionRequestRepository,UserRepository userRepository,CurrencyConverter currencyConverter,LedgerService ledgerService){
         this.accountRepository=accountRepository;
         this.transactionRequestRepository=transactionRequestRepository;
         this.userRepository=userRepository;
+        this.currencyConverter=currencyConverter;
+        this.ledgerService=ledgerService;
     }
     @PreAuthorize("hasRole('CUSTOMER')")
     public TransactionRequest processDeposit(DepositRequest depositRequest, String username, String idempotencyKey) {
@@ -54,7 +58,11 @@ public class TransactionService {
         transactionRequest.setStatus("PENDING");
         transactionRequest.setCreatedAt(LocalDateTime.now());
         transactionRequest.setIdempotencyKey(idempotencyKey);
-        return transactionRequestRepository.save(transactionRequest);
+        TransactionRequest dbTransactionRequest= transactionRequestRepository.save(transactionRequest);
+
+        ledgerService.addDepositEntry(receiver.getAccountNumber(),depositRequest.amount(),dbTransactionRequest.getId());
+
+        return dbTransactionRequest;
     }
     @PreAuthorize("hasRole('CUSTOMER')")
     public TransactionRequest processTransfer(TransferRequest transferRequest, String idempotencyKey){
@@ -75,24 +83,33 @@ public class TransactionService {
             throw new RuntimeException("cannot send money to a locked account");
         }
 
-        BigDecimal amount=transferRequest.amount();
+        BigDecimal amountSent=transferRequest.amount();
+
+        BigDecimal amountReceived=amountSent;
+        if(!senderAccount.getCurrency().equals(receiverAccount.getCurrency())){
+            amountReceived=currencyConverter.covert(amountReceived,senderAccount.getCurrency(),receiverAccount.getCurrency());
+        }
 
         // Check if sender has enough balance
-        if (senderAccount.getCurrentBalance().compareTo(amount) < 0) {
+        if (senderAccount.getCurrentBalance().compareTo(amountSent) < 0) {
             throw new RuntimeException("Insufficient funds for this transfer");
         }
 
-        deposit(receiverAccount,amount);
-        deduct(senderAccount,amount);
+        deposit(receiverAccount,amountReceived);
+        deduct(senderAccount,amountSent);
 
         TransactionRequest transactionRequest=new TransactionRequest();
-        transactionRequest.setAmount(amount);
+        transactionRequest.setAmount(amountSent);
         transactionRequest.setCurrency(transferRequest.currency());
         transactionRequest.setCreatedAt(LocalDateTime.now());
         transactionRequest.setSender(senderAccount);
         transactionRequest.setReceiver(receiverAccount);
         transactionRequest.setIdempotencyKey(idempotencyKey);
-        return transactionRequestRepository.save(transactionRequest);
+        TransactionRequest dbTransactionRequest= transactionRequestRepository.save(transactionRequest);
+
+        ledgerService.addTransferEntry(senderAccount.getAccountNumber(),receiverAccount.getAccountNumber(),amountSent,amountReceived,dbTransactionRequest.getId());
+
+        return dbTransactionRequest;
     }
 
     void deposit(Account account,BigDecimal amount){
